@@ -1,86 +1,39 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My GitHub Pages</title>
-
-<style>
-:root {
-  --bg: #0f172a;
-  --card: #1e293b;
-  --accent: #38bdf8;
-  --text: #f1f5f9;
-}
-
-* { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background: linear-gradient(135deg, #0f172a, #1e293b);
-  color: var(--text);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-}
-
-.card {
-  background: var(--card);
-  padding: 40px;
-  border-radius: 16px;
-  width: 90%;
-  max-width: 500px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-  text-align: center;
-}
-
-h1 {
-  margin: 0 0 16px;
-  font-size: 28px;
-}
-
-p {
-  margin: 0 0 24px;
-  opacity: 0.8;
-}
-
-button {
-  background: var(--accent);
-  border: none;
-  padding: 12px 20px;
-  border-radius: 8px;
-  font-size: 16px;
-  cursor: pointer;
-  color: #0f172a;
-  font-weight: bold;
-  transition: transform 0.15s ease, opacity 0.15s ease;
-}
-
-button:hover {
-  transform: translateY(-2px);
-  opacity: 0.9;
-}
-
-footer {
-  margin-top: 30px;
-  font-size: 12px;
-  opacity: 0.6;
-}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>共有メモ（GitHub Issues）</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 24px; max-width: 900px; }
+    .hint { color:#666; font-size: 13px; }
+    .box { border:1px solid #ddd; border-radius:10px; padding:14px; margin: 14px 0; }
+    code { background:#f6f8fa; padding:2px 6px; border-radius:6px; }
+  </style>
 </head>
-
 <body>
+  <h1>共有メモ</h1>
+  <div class="box">
+    <div class="hint">
+      書き込み/閲覧は GitHub ログインが必要。内容はこのサイトではなく GitHub Issues に保存されます（外部DBなし）。
+    </div>
+    <ul class="hint">
+      <li>新規メモ = コメント投稿</li>
+      <li>保存/履歴 = Issue上に残る</li>
+      <li>荒らし対策 = GitHub側のモデレーション/権限で対応</li>
+    </ul>
+  </div>
 
-<div class="card">
-  <h1>GitHub Pages Test</h1>
-  <p>正常に公開されています。</p>
-  <button onclick="alert('JavaScriptも動作中')">テストボタン</button>
-  <footer>
-    © 2026 YourName
-  </footer>
-</div>
+  <h2>メモ欄</h2>
 
+  <!-- utterances: GitHub Issues をコメント欄として使う -->
+  <script
+    src="https://utteranc.es/client.js"
+    repo="YOUR_GH_USER/shared-memo-board"
+    issue-term="pathname"
+    theme="github-light"
+    crossorigin="anonymous"
+    async>
+  </script>
 </body>
 </html>
