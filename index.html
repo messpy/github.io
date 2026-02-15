@@ -1,39 +1,65 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>共有メモ（GitHub Issues）</title>
-  <style>
-    body { font-family: system-ui, sans-serif; margin: 24px; max-width: 900px; }
-    .hint { color:#666; font-size: 13px; }
-    .box { border:1px solid #ddd; border-radius:10px; padding:14px; margin: 14px 0; }
-    code { background:#f6f8fa; padding:2px 6px; border-radius:6px; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Markdown Viewer</title>
+<style>
+body { font-family: system-ui; margin:20px; }
+textarea { width:100%; height:200px; }
+#preview { border:1px solid #ccc; padding:10px; margin-top:10px; }
+button { margin-right:8px; }
+</style>
 </head>
 <body>
-  <h1>共有メモ</h1>
-  <div class="box">
-    <div class="hint">
-      書き込み/閲覧は GitHub ログインが必要。内容はこのサイトではなく GitHub Issues に保存されます（外部DBなし）。
-    </div>
-    <ul class="hint">
-      <li>新規メモ = コメント投稿</li>
-      <li>保存/履歴 = Issue上に残る</li>
-      <li>荒らし対策 = GitHub側のモデレーション/権限で対応</li>
-    </ul>
-  </div>
 
-  <h2>メモ欄</h2>
+<h1>Markdown Upload Preview</h1>
 
-  <!-- utterances: GitHub Issues をコメント欄として使う -->
-  <script
-    src="https://utteranc.es/client.js"
-    repo="YOUR_GH_USER/shared-memo-board"
-    issue-term="pathname"
-    theme="github-light"
-    crossorigin="anonymous"
-    async>
-  </script>
+<input type="file" id="fileInput" accept=".md">
+<button onclick="exportHTML()">HTMLエクスポート</button>
+
+<textarea id="editor"></textarea>
+<div id="preview"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+
+<script>
+const editor = document.getElementById("editor");
+const preview = document.getElementById("preview");
+
+function render() {
+  const raw = marked.parse(editor.value);
+  preview.innerHTML = DOMPurify.sanitize(raw);
+}
+
+editor.addEventListener("input", render);
+
+document.getElementById("fileInput").addEventListener("change", function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    editor.value = ev.target.result;
+    render();
+  };
+  reader.readAsText(file);
+});
+
+function exportHTML(){
+  const html = preview.innerHTML;
+  const blob = new Blob([html], {type:"text/html"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "export.html";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+render();
+</script>
+
 </body>
 </html>
