@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>インタラクティブカラーパレットジェネレーター</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎨 カラーパレットジェネレーター</h1>
+            <p>スペースキーを押すか、ボタンをクリックして新しいパレットを生成してください</p>
+        </header>
+        
+        <div id="palette" class="palette">
+            <!-- カラーボックスはJavaScriptで生成されます -->
+        </div>
+        
+        <div class="controls">
+            <button id="generateBtn" class="btn-primary">新しいパレットを生成</button>
+            <button id="saveBtn" class="btn-secondary">お気に入りに保存</button>
+        </div>
+        
+        <div id="savedPalettes" class="saved-palettes">
+            <h2>保存されたパレット</h2>
+            <div id="savedList" class="saved-list">
+                <!-- 保存されたパレットがここに表示されます -->
+            </div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
