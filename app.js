@@ -24,7 +24,7 @@ fileInput.addEventListener("change", function(e){
 
 exportBtn.addEventListener("click", function(){
   const html = preview.innerHTML;
-  const blob = new Blob([html], {type:"text/md"});
+  const blob = new Blob([md], {type:"text/md"});
   const url = URL.createObjectURL(blob);
 
   const a = document.createElement("a");
