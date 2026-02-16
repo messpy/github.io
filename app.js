@@ -24,12 +24,12 @@ fileInput.addEventListener("change", function(e){
 
 exportBtn.addEventListener("click", function(){
   const html = preview.innerHTML;
-  const blob = new Blob([html], {type:"text/html"});
+  const blob = new Blob([html], {type:"text/md"});
   const url = URL.createObjectURL(blob);
 
   const a = document.createElement("a");
   a.href = url;
-  a.download = "export.html";
+  a.download = "export.md";
   a.click();
 
   URL.revokeObjectURL(url);
