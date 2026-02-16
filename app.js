@@ -1,38 +1,31 @@
+// app.js
 const editor = document.getElementById("editor");
 const preview = document.getElementById("preview");
-const fileInput = document.getElementById("fileInput");
-const exportBtn = document.getElementById("exportBtn");
 
 function render() {
   const raw = marked.parse(editor.value || "");
   preview.innerHTML = DOMPurify.sanitize(raw);
 }
 
-editor.addEventListener("input", render);
+function insert(md) {
+  const start = editor.selectionStart;
+  const end = editor.selectionEnd;
+  const text = editor.value;
+  editor.value = text.slice(0, start) + md + text.slice(end);
+  editor.focus();
+  editor.selectionStart = editor.selectionEnd = start + md.length;
+  render();
+}
 
-fileInput.addEventListener("change", function(e){
-  const file = e.target.files[0];
-  if(!file) return;
-
-  const reader = new FileReader();
-  reader.onload = function(ev){
-    editor.value = ev.target.result;
-    render();
-  };
-  reader.readAsText(file);
-});
-
-exportBtn.addEventListener("click", function(){
-  const html = preview.innerHTML;
-  const blob = new Blob([md], {type:"text/md"});
+function downloadMd() {
+  const blob = new Blob([editor.value], {type: "text/markdown"});
   const url = URL.createObjectURL(blob);
-
   const a = document.createElement("a");
   a.href = url;
-  a.download = "export.md";
+  a.download = "output.md";
   a.click();
-
   URL.revokeObjectURL(url);
-});
+}
 
+editor.addEventListener("input", render);
 render();
