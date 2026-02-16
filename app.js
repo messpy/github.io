@@ -1,31 +1,31 @@
-// app.js
-const editor = document.getElementById("editor");
-const preview = document.getElementById("preview");
+editor.addEventListener("keydown", function(e) {
+  if (e.key === "Enter") {
+    const start = editor.selectionStart;
+    const value = editor.value;
+    const before = value.slice(0, start);
+    const after = value.slice(start);
 
-function render() {
-  const raw = marked.parse(editor.value || "");
-  preview.innerHTML = DOMPurify.sanitize(raw);
-}
+    const lines = before.split("\n");
+    const prevLine = lines[lines.length - 1];
 
-function insert(md) {
-  const start = editor.selectionStart;
-  const end = editor.selectionEnd;
-  const text = editor.value;
-  editor.value = text.slice(0, start) + md + text.slice(end);
-  editor.focus();
-  editor.selectionStart = editor.selectionEnd = start + md.length;
-  render();
-}
+    // 自動リスト補完
+    const matchBullet = /^(\s*)[-*+] /.exec(prevLine);
+    const matchNumber = /^(\s*)(\d+)\. /.exec(prevLine);
 
-function downloadMd() {
-  const blob = new Blob([editor.value], {type: "text/markdown"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "output.md";
-  a.click();
-  URL.revokeObjectURL(url);
-}
+    let insertText = "\n";
+    if (matchBullet) {
+      insertText += matchBullet[1] + "- ";
+    } else if (matchNumber) {
+      const indent = matchNumber[1];
+      const nextNum = parseInt(matchNumber[2], 10) + 1;
+      insertText += `${indent}${nextNum}. `;
+    }
 
-editor.addEventListener("input", render);
-render();
+    e.preventDefault();
+    editor.value = before + insertText + after;
+    const cursor = start + insertText.length;
+    editor.selectionStart = editor.selectionEnd = cursor;
+
+    render();
+  }
+});
