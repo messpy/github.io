@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ろらごっち</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text x=%2250%%22 y=%2250%%22 style=%22dominant-baseline:central;text-anchor:middle;font-size:80px;%22>🥚</text></svg>">
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <div class="box">
+    <h1>ろらごっち</h1>
+    <div class="muted">ローカル保存（localStorage）。卵→あたため→15秒で孵化。孵化後は世話のバランスが悪いと死亡。</div>
+
+    <div class="row">
+      <div class="pill">訪問: <b id="visits"></b></div>
+      <div class="pill">滞在: <b id="watched"></b> 秒</div>
+      <div class="pill">段階: <b id="phase"></b></div>
+      <div class="pill">サイズ: <b id="size"></b></div>
+      <div class="pill">進化: <b id="form"></b></div>
+      <div class="pill">Lv: <b id="lv"></b></div>
+      <div class="pill">状態: <b id="state"></b></div>
+      <div class="pill">機嫌: <b id="happy"></b></div>
+      <div class="pill">汚れ: <b id="dirty"></b></div>
+      <div class="pill">満腹: <b id="full"></b></div>
+      <div class="pill" id="alertPill" style="display:none;"><b id="alertText"></b></div>
+    </div>
+
+    <div class="row">
+      <button id="warm">あたためる</button>
+      <button id="feed">えさ</button>
+      <button id="play">あそぶ</button>
+      <button id="clean">そうじ</button>
+      <button id="reset">リセット</button>
+    </div>
+
+    <pre id="screen"></pre>
+    <div class="muted">危険域が一定時間続くと死亡（いきなり死なない）。</div>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
