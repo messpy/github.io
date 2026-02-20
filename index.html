@@ -3,99 +3,323 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>GitHub IO Tamagotchi</title>
+  <title>Tama Dot Cute (Local)</title>
   <style>
     body { font-family: system-ui, sans-serif; padding: 16px; }
-    .box { border: 1px solid #ccc; padding: 12px; border-radius: 8px; max-width: 520px; }
-    .row { display: flex; gap: 12px; flex-wrap: wrap; }
-    .stat { min-width: 160px; }
-    button { padding: 8px 12px; }
-    pre { background: #f6f6f6; padding: 8px; border-radius: 6px; }
+    .box { border: 1px solid #ccc; border-radius: 12px; padding: 12px; max-width: 920px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
+    button { padding: 8px 12px; cursor: pointer; }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    pre {
+      margin-top: 12px;
+      padding: 14px;
+      border-radius: 12px;
+      background: #f7f7f7;
+      overflow: auto;
+      line-height: 1.05;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 16px;
+      white-space: pre;
+    }
+    .pill { padding: 2px 10px; border: 1px solid #ddd; border-radius: 999px; background: #fff; }
+    .muted { color: #666; font-size: 12px; }
+    .warn { border-color: #f5c542; background: #fff9e6; }
+    .danger { border-color: #ff7a7a; background: #ffecec; }
   </style>
 </head>
 <body>
   <div class="box">
-    <h1>たまごっち（ローカル育成）</h1>
+    <h1>たまごっち（ドット絵 / ローカル育成）</h1>
+    <div class="muted">この端末のブラウザだけで育ちます（localStorage保存）。</div>
 
     <div class="row">
-      <div class="stat">訪問回数: <span id="visits"></span></div>
-      <div class="stat">見ている時間: <span id="watched"></span> 秒</div>
-      <div class="stat">レベル: <span id="level"></span></div>
-      <div class="stat">進化: <span id="stage"></span></div>
+      <div class="pill">訪問: <b id="visits"></b></div>
+      <div class="pill">滞在: <b id="watched"></b> 秒</div>
+      <div class="pill">Lv: <b id="lv"></b></div>
+      <div class="pill">状態: <b id="state"></b></div>
+      <div class="pill">機嫌: <b id="happy"></b></div>
+      <div class="pill">汚れ: <b id="dirty"></b></div>
+      <div class="pill">満腹: <b id="full"></b></div>
+      <div class="pill" id="alertPill" style="display:none;"><b id="alertText"></b></div>
     </div>
 
-    <div style="margin-top: 12px;">
-      <button id="reset">リセット（この端末のみ）</button>
+    <div class="row">
+      <button id="feed">えさ</button>
+      <button id="play">あそぶ</button>
+      <button id="clean">そうじ</button>
+      <button id="reset">リセット</button>
     </div>
 
-    <h2>状態</h2>
-    <pre id="dump"></pre>
+    <pre id="screen"></pre>
+    <div class="muted">タブが非表示の間は滞在カウント停止。</div>
   </div>
 
 <script>
 (() => {
-  const KEY = "tama_state_v1";
+  const KEY = "tama_dot_cute_state_v2";
+  const SESSION_KEY = "tama_dot_cute_counted_session_v1";
 
-  // 状態ロード
+  const nowMs = () => Date.now();
+  const clamp = (n,a,b) => Math.max(a, Math.min(b, n));
+
+  // --- 仕様パラメータ（ここだけ調整すればバランス変えられる）
+  const FULL_MAX = 14;          // これ超えたら死亡（過食）
+  const FULL_WARN = 11;         // ここから警告
+  const FULL_DECAY_SEC = 18;    // 満腹が自然減少する周期（秒）
+  const DIRTY_INC_SEC = 35;     // 汚れ増加周期（秒）
+  const HAPPY_DECAY_SEC = 25;   // 機嫌減少周期（秒）
+
   function loadState() {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return { visits: 0, watchedSec: 0, createdAt: Date.now() };
-    try { return JSON.parse(raw); } catch { return { visits: 0, watchedSec: 0, createdAt: Date.now() }; }
+    if (!raw) {
+      return {
+        createdAt: nowMs(),
+        visits: 0,
+        watchedSec: 0,
+        // 状態
+        alive: true,
+        deadReason: "",
+        // ステータス
+        full: 3,     // 満腹度（えさ過多で死ぬ）
+        happy: 3,    // 機嫌
+        dirty: 0,    // 汚れ
+        // 世話回数（成長用）
+        feedCount: 0,
+        playCount: 0,
+        cleanCount: 0,
+        // アニメ
+        anim: { mode: "idle", frame: 0, untilMs: 0 }
+      };
+    }
+    try { return JSON.parse(raw); } catch {
+      localStorage.removeItem(KEY);
+      return loadState();
+    }
   }
 
-  // 状態セーブ
-  function saveState(s) {
-    localStorage.setItem(KEY, JSON.stringify(s));
+  function saveState(s){ localStorage.setItem(KEY, JSON.stringify(s)); }
+
+  function calcPoints(s){
+    // 進化に関係するポイント（死亡時は止める）
+    const base = s.visits * 10 + Math.floor(s.watchedSec / 10);
+    const care = s.feedCount * 2 + s.playCount * 3 + s.cleanCount * 2;
+    const health = Math.max(0, (10 - s.dirty)) + s.happy; // 雑に加点
+    return Math.max(0, base + care + health);
   }
 
-  // 成長ロジック（例）
-  function calcLevel(s) {
-    // 例: 訪問1回=10pt、10秒滞在=1pt
-    const pt = s.visits * 10 + Math.floor(s.watchedSec / 10);
-    // 例: 0-19:Lv1, 20-49:Lv2, 50-99:Lv3, 100+:Lv4
-    if (pt >= 100) return 4;
-    if (pt >= 50) return 3;
-    if (pt >= 20) return 2;
+  function calcLevel(pt){
+    if (pt >= 240) return 6;
+    if (pt >= 170) return 5;
+    if (pt >= 110) return 4;
+    if (pt >= 60)  return 3;
+    if (pt >= 25)  return 2;
     return 1;
   }
 
-  function calcStage(level) {
-    // 例: レベルで進化段階
-    if (level >= 4) return "最終";
-    if (level >= 3) return "成長";
-    if (level >= 2) return "幼体";
-    return "卵";
+  function moodName(s){
+    if (!s.alive) return "しぼう";
+    if (s.full >= FULL_WARN) return "くるしい";
+    if (s.dirty >= 7) return "きたない";
+    if (s.happy >= 8) return "るんるん";
+    if (s.happy <= 2) return "しょんぼり";
+    return "ふつう";
   }
 
-  // UI
-  const elVisits = document.getElementById("visits");
+  // --- ドット絵生成（オリジナル）
+  // かわいさ重視で「丸い胴体 + ほっぺ + ちいさい手足」
+  function eyesMouth(mood){
+    switch(mood){
+      case "るんるん": return { eyes: "•  •", mouth: "ᴗ" , cheek:"˶"};
+      case "しょんぼり": return { eyes: "•  •", mouth: "︵", cheek:" "};
+      case "きたない": return { eyes: "•  •", mouth: "…", cheek:" "};
+      case "くるしい": return { eyes: "•  •", mouth: "︵", cheek:"°"};
+      case "しぼう": return { eyes: "×  ×", mouth: "︵", cheek:" "};
+      default: return { eyes: "•  •", mouth: "ᴥ", cheek:"˶" };
+    }
+  }
+
+  function badgeLine(s){
+    const f = "■".repeat(clamp(s.full,0,14)).padEnd(14,"·");
+    const h = "■".repeat(clamp(s.happy,0,10)).padEnd(10,"·");
+    const d = "■".repeat(clamp(s.dirty,0,10)).padEnd(10,"·");
+    return `FULL[${f}]  HAPPY[${h}]  DIRTY[${d}]`;
+  }
+
+  function spriteIdle(lv, mood, s){
+    const em = eyesMouth(mood);
+
+    // Lvでちょっとだけ帽子/星など装飾が増える（見た目の進化感）
+    const decoTop =
+      lv >= 6 ? "   ✧  ✦   " :
+      lv >= 5 ? "    ✦     " :
+      lv >= 4 ? "    ✧     " :
+      lv >= 3 ? "          " :
+      lv >= 2 ? "          " :
+                "          ";
+
+    const hat =
+      lv >= 5 ? "   /^\\     " :
+      lv >= 4 ? "   /\\      " :
+                "           ";
+
+    const poop = "※".repeat(clamp(Math.floor(s.dirty/2),0,6));
+    const food = "o".repeat(clamp(Math.floor(s.full/2),0,6));
+
+    // 死亡は固定絵に寄せる
+    if (!s.alive){
+      return [
+        "            ",
+        "   .-''''-. ",
+        "  /  ×  × \\",
+        " |    ︵    |",
+        " |  .____.  |",
+        "  \\________/ ",
+        "    _||_     ",
+        "   /____\\    ",
+        "",
+        "  しんだ…",
+      ].join("\n");
+    }
+
+    return [
+      decoTop,
+      hat,
+      "   .-''''-.      ",
+      "  /  .--.  \\     ",
+      ` |  ( ${em.eyes} )  |    `,
+      ` |     ${em.cheek}${em.mouth}${em.cheek}     |    `,
+      " |   .----.   |  ",
+      "  \\  '----'  /   ",
+      "   '._    _.'    ",
+      "      '---'      ",
+      `   food:${food.padEnd(6,"·")}  dirt:${poop.padEnd(6,"·")}`,
+    ].join("\n");
+  }
+
+  // 遊びアニメ（数秒だけフレーム切替）
+  function spritePlayFrame(frame, lv, mood, s){
+    const em = eyesMouth("るんるん"); // 遊び中は基本ニコ
+    const hands = frame % 2 === 0 ? "/\\  /\\" : "\\/  \\/";
+    const jump  = frame % 2 === 0 ? "   " : " ";
+
+    return [
+      "            ",
+      `${jump} .-''''-.   `,
+      `${jump}/  .--.  \\  `,
+      `${jump}| ( ${em.eyes} ) |  `,
+      `${jump}|   ${em.cheek}${em.mouth}${em.cheek}   |  `,
+      `${jump}|  ${hands}  |  `,
+      `${jump}\\  '----' /  `,
+      `${jump} '._  _.'   `,
+      `${jump}   '---'    `,
+      "    ♪  ♪     ",
+      "",
+      "   あそぶ！   ",
+    ].join("\n");
+  }
+
+  function spriteFeedFlash(frame, s){
+    // えさ直後：もぐもぐ2フレーム
+    const munch = frame % 2 === 0 ? "もぐもぐ" : "もっもっ";
+    return [
+      "            ",
+      "   .-''''-. ",
+      "  /  .--.  \\",
+      " |  ( •  • ) |",
+      " |     ᴗ     |",
+      " |   (___)   |",
+      "  \\  '---'  / ",
+      "   '._  _.'   ",
+      "      '---'   ",
+      "",
+      `   ${munch}…`,
+    ].join("\n");
+  }
+
+  function computeAlert(s){
+    if (!s.alive) return { show:true, level:"danger", text:`死亡: ${s.deadReason || "不明"}` };
+    if (s.full >= FULL_WARN) return { show:true, level:"danger", text:"警告: えさ過多で危険" };
+    if (s.dirty >= 7) return { show:true, level:"warn", text:"注意: よごれが多い" };
+    if (s.happy <= 2) return { show:true, level:"warn", text:"注意: さみしそう" };
+    return { show:false, level:"", text:"" };
+  }
+
+  // --- UI
+  const elVisits  = document.getElementById("visits");
   const elWatched = document.getElementById("watched");
-  const elLevel = document.getElementById("level");
-  const elStage = document.getElementById("stage");
-  const elDump = document.getElementById("dump");
+  const elLv      = document.getElementById("lv");
+  const elState   = document.getElementById("state");
+  const elHappy   = document.getElementById("happy");
+  const elDirty   = document.getElementById("dirty");
+  const elFull    = document.getElementById("full");
+  const elScreen  = document.getElementById("screen");
+  const elAlertPill = document.getElementById("alertPill");
+  const elAlertText = document.getElementById("alertText");
+
+  const btnFeed  = document.getElementById("feed");
+  const btnPlay  = document.getElementById("play");
+  const btnClean = document.getElementById("clean");
+  const btnReset = document.getElementById("reset");
 
   let state = loadState();
 
-  // 訪問回数は「1セッションで1回」にしたいならここで工夫する
-  // 例: sessionStorageにフラグを置いて二重カウント防止
-  const sessionKey = "tama_counted_this_session";
-  if (!sessionStorage.getItem(sessionKey)) {
+  // 訪問：1セッション1回
+  if (!sessionStorage.getItem(SESSION_KEY)) {
     state.visits += 1;
-    sessionStorage.setItem(sessionKey, "1");
+    sessionStorage.setItem(SESSION_KEY, "1");
     saveState(state);
   }
 
-  // 滞在時間カウント（タブが非表示のときは止める）
+  // --- 死亡判定（過食）
+  function checkDeath(){
+    if (!state.alive) return;
+    if (state.full > FULL_MAX) {
+      state.alive = false;
+      state.deadReason = "えさを食べすぎた";
+      state.anim = { mode:"dead", frame:0, untilMs:0 };
+    }
+  }
+
+  // --- アニメ開始ユーティリティ
+  function startAnim(mode, durationMs){
+    state.anim.mode = mode;
+    state.anim.frame = 0;
+    state.anim.untilMs = nowMs() + durationMs;
+  }
+
+  // --- タイマー（表示中だけ）
   let timer = null;
-  function startTimer() {
+  function startTimer(){
     if (timer) return;
     timer = setInterval(() => {
+      if (!state.alive) {
+        saveState(state);
+        render();
+        return;
+      }
+
       state.watchedSec += 1;
+
+      // 自然変化
+      if (state.watchedSec % FULL_DECAY_SEC === 0) state.full = Math.max(0, state.full - 1);
+      if (state.watchedSec % DIRTY_INC_SEC === 0) state.dirty += 1;
+      if (state.watchedSec % HAPPY_DECAY_SEC === 0 && state.happy > 0) state.happy -= 1;
+
+      // アニメ更新
+      if (state.anim.mode !== "idle") {
+        if (nowMs() >= state.anim.untilMs) {
+          state.anim = { mode:"idle", frame:0, untilMs:0 };
+        } else {
+          state.anim.frame += 1;
+        }
+      }
+
+      checkDeath();
       saveState(state);
       render();
-    }, 1000);
+    }, 200); // 5fpsくらい（ドット絵アニメ用）
   }
-  function stopTimer() {
+  function stopTimer(){
     if (!timer) return;
     clearInterval(timer);
     timer = null;
@@ -106,29 +330,111 @@
     else startTimer();
   });
 
-  // 初期起動
-  startTimer();
-  render();
+  // --- ボタン挙動
+  btnFeed.addEventListener("click", () => {
+    if (!state.alive) return;
 
-  function render() {
-    const level = calcLevel(state);
-    const stage = calcStage(level);
+    // えさ過多の「警告」は表示だけでなく、直前の抑止もできる
+    // 今回は「押したら増える」が、警告はpillで常時出す設計。
+    state.feedCount += 1;
+    state.full += 2;     // えさは満腹を上げる
+    state.happy += 1;    // 少しうれしい
+    state.dirty += 1;    // 少し汚れる
+
+    startAnim("feed", 1200);
+    checkDeath();
+    saveState(state);
+    render();
+  });
+
+  btnPlay.addEventListener("click", () => {
+    if (!state.alive) return;
+
+    // 遊んでる感：数秒アニメ + ちゃんと効果が出る
+    state.playCount += 1;
+    state.happy += 3;
+    state.full = Math.max(0, state.full - 1); // 運動で少し減る
+    state.dirty += 1; // 遊ぶとちょい汚れる
+
+    startAnim("play", 2600);
+    saveState(state);
+    render();
+  });
+
+  btnClean.addEventListener("click", () => {
+    if (!state.alive) return;
+
+    state.cleanCount += 1;
+    state.dirty = Math.max(0, state.dirty - 3);
+    state.happy += 1;
+    saveState(state);
+    render();
+  });
+
+  btnReset.addEventListener("click", () => {
+    localStorage.removeItem(KEY);
+    sessionStorage.removeItem(SESSION_KEY);
+    state = loadState();
+    saveState(state);
+    render();
+  });
+
+  function render(){
+    // 上限カット（暴走防止）
+    state.happy = clamp(state.happy, 0, 10);
+    state.dirty = clamp(state.dirty, 0, 10);
+    state.full  = clamp(state.full, 0, 99);
+
+    const pt = calcPoints(state);
+    const lv = calcLevel(pt);
+    const mood = moodName(state);
 
     elVisits.textContent = String(state.visits);
     elWatched.textContent = String(state.watchedSec);
-    elLevel.textContent = String(level);
-    elStage.textContent = stage;
+    elLv.textContent = String(lv);
+    elState.textContent = mood;
+    elHappy.textContent = String(state.happy);
+    elDirty.textContent = String(state.dirty);
+    elFull.textContent = String(state.full);
 
-    elDump.textContent = JSON.stringify({ ...state, level, stage }, null, 2);
+    const alert = computeAlert(state);
+    if (alert.show) {
+      elAlertPill.style.display = "inline-block";
+      elAlertText.textContent = alert.text;
+      elAlertPill.classList.remove("warn","danger");
+      if (alert.level) elAlertPill.classList.add(alert.level);
+    } else {
+      elAlertPill.style.display = "none";
+    }
+
+    // 操作可否
+    btnFeed.disabled = !state.alive;
+    btnPlay.disabled = !state.alive;
+    btnClean.disabled = !state.alive;
+
+    // スプライト選択
+    let sprite = "";
+    if (!state.alive) {
+      sprite = spriteIdle(lv, mood, state);
+    } else if (state.anim.mode === "play") {
+      sprite = spritePlayFrame(state.anim.frame, lv, mood, state);
+    } else if (state.anim.mode === "feed") {
+      sprite = spriteFeedFlash(state.anim.frame, state);
+    } else {
+      sprite = spriteIdle(lv, mood, state);
+    }
+
+    elScreen.textContent =
+      sprite +
+      "\n\n" +
+      badgeLine(state) +
+      "\n" +
+      `pt=${pt} feed=${state.feedCount} play=${state.playCount} clean=${state.cleanCount}` +
+      (state.alive ? "" : `\n理由: ${state.deadReason}`);
   }
 
-  // リセット
-  document.getElementById("reset").addEventListener("click", () => {
-    localStorage.removeItem(KEY);
-    sessionStorage.removeItem(sessionKey);
-    state = loadState();
-    render();
-  });
+  startTimer();
+  render();
 })();
 </script>
 </body>
