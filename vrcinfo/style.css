@@ -28,6 +28,15 @@ header p {
     font-size: 0.95rem;
 }
 
+header .notice {
+    margin-top: 0.6rem;
+    font-size: 0.85rem;
+    background: rgba(255,255,255,0.15);
+    display: inline-block;
+    padding: 0.3rem 0.8rem;
+    border-radius: 4px;
+}
+
 main {
     max-width: 1400px;
     margin: 2rem auto;
@@ -67,8 +76,16 @@ main {
     font-size: 0.9rem;
 }
 
-#fileInput {
+#fileInput, #folderInput {
     display: none;
+}
+
+.file-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
 }
 
 .file-label {
@@ -78,11 +95,18 @@ main {
     padding: 0.6rem 1.2rem;
     border-radius: 4px;
     cursor: pointer;
-    margin-top: 0.5rem;
 }
 
 .file-label:hover {
     background: #1558b0;
+}
+
+.file-label.folder-btn {
+    background: #388e3c;
+}
+
+.file-label.folder-btn:hover {
+    background: #2e7d32;
 }
 
 .actions {

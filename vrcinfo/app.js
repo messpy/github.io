@@ -1,6 +1,7 @@
 (() => {
     const dropZone = document.getElementById("dropZone");
     const fileInput = document.getElementById("fileInput");
+    const folderInput = document.getElementById("folderInput");
     const results = document.getElementById("results");
     const downloadBtn = document.getElementById("downloadJson");
     const copyBtn = document.getElementById("copyJson");
@@ -11,7 +12,6 @@
     const statOther = document.getElementById("statOther");
 
     const parsedData = [];
-    const fileRefs = []; // store File objects for preview
 
     // ── Drag & Drop ──
     dropZone.addEventListener("dragover", e => {
@@ -25,6 +25,7 @@
         handleFiles(e.dataTransfer.files);
     });
     fileInput.addEventListener("change", () => handleFiles(fileInput.files));
+    folderInput.addEventListener("change", () => handleFiles(folderInput.files));
 
     // ── Actions ──
     downloadBtn.addEventListener("click", () => {
@@ -54,9 +55,8 @@
         const buffer = await file.arrayBuffer();
         const array = new Uint8Array(buffer);
 
-        // Store file reference for preview
-        const fileIndex = fileRefs.length;
-        fileRefs.push(file);
+        // Create preview URL immediately (before any async ops)
+        const blobUrl = URL.createObjectURL(file);
 
         // Basic info
         const info = {
@@ -64,6 +64,7 @@
             fileSize: file.size,
             mimeType: file.type,
             sha256: await sha256(buffer),
+            blobUrl: blobUrl,
         };
 
         // Image dimensions
@@ -95,7 +96,7 @@
 
         parsedData.push(info);
         updateStats();
-        renderCard(info, fileIndex);
+        renderCard(info);
         enableButtons();
     }
 
@@ -332,35 +333,43 @@
     }
 
     // ── Render Card ──
-    function renderCard(info, fileIndex) {
+    function renderCard(info) {
         const card = document.createElement("div");
         card.className = "card";
 
-        const file = fileRefs[fileIndex];
-        const blobUrl = file ? URL.createObjectURL(file) : "";
+        const previewDiv = document.createElement("div");
+        previewDiv.className = "card-preview";
+        const img = document.createElement("img");
+        img.src = info.blobUrl;
+        img.alt = "";
+        img.onerror = () => {
+            previewDiv.innerHTML = "<span>No Preview</span>";
+        };
+        previewDiv.appendChild(img);
 
-        card.innerHTML = `
-            <div class="card-preview">
-                ${blobUrl ? `<img src="${blobUrl}" alt="">` : "<span>No Preview</span>"}
+        const bodyDiv = document.createElement("div");
+        bodyDiv.className = "card-body";
+
+        bodyDiv.innerHTML = `
+            <div class="card-title">${escHtml(info.fileName)}</div>
+            <div class="card-meta">
+                <span>${formatSize(info.fileSize)}</span>
+                <span>${info.width} × ${info.height}</span>
             </div>
-            <div class="card-body">
-                <div class="card-title">${escHtml(info.fileName)}</div>
-                <div class="card-meta">
-                    <span>${formatSize(info.fileSize)}</span>
-                    <span>${info.width} × ${info.height}</span>
-                </div>
-                <div class="badges">
-                    <span class="badge ${info.hasXmp ? 'active' : ''}">XMP</span>
-                    <span class="badge ${info.hasVrc ? 'vrc' : ''}">VRChat</span>
-                    <span class="badge ${info.hasExif ? 'active' : ''}">EXIF</span>
-                    <span class="badge ${info.hasPngText ? 'active' : ''}">PNG text</span>
-                </div>
-                ${info.hasVrc ? renderVrcSection(info.vrc) : ""}
-                ${info.xmp ? renderXmpSection(info.xmp) : ""}
-                ${info.hasExif ? renderExifSection(info.exif) : ""}
-                ${info.hasPngText ? renderPngTextSection(info.pngText) : ""}
+            <div class="badges">
+                <span class="badge ${info.hasXmp ? 'active' : ''}">XMP</span>
+                <span class="badge ${info.hasVrc ? 'vrc' : ''}">VRChat</span>
+                <span class="badge ${info.hasExif ? 'active' : ''}">EXIF</span>
+                <span class="badge ${info.hasPngText ? 'active' : ''}">PNG text</span>
             </div>
+            ${info.hasVrc ? renderVrcSection(info.vrc) : ""}
+            ${info.xmp ? renderXmpSection(info.xmp) : ""}
+            ${info.hasExif ? renderExifSection(info.exif) : ""}
+            ${info.hasPngText ? renderPngTextSection(info.pngText) : ""}
         `;
+
+        card.appendChild(previewDiv);
+        card.appendChild(bodyDiv);
         results.appendChild(card);
 
         // setup collapsible

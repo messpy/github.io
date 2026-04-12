@@ -10,6 +10,7 @@
     <header>
         <h1>VRChat Image Info Analyzer</h1>
         <p>画像ファイルのメタデータをブラウザ内で解析・表示します</p>
+        <p class="notice">📢 2025年8月以降のVRChatスクリーンショットにメタデータ（ワールド情報等）が含まれるようになりました</p>
     </header>
 
     <main>
@@ -17,8 +18,12 @@
             <div class="drop-zone" id="dropZone">
                 <p>ここに画像をドラッグ＆ドロップ</p>
                 <p class="hint">または</p>
-                <input type="file" id="fileInput" accept="image/png,image/jpeg" multiple>
-                <label for="fileInput" class="file-label">ファイルを選択</label>
+                <div class="file-buttons">
+                    <input type="file" id="fileInput" accept="image/png,image/jpeg" multiple>
+                    <label for="fileInput" class="file-label">ファイルを選択</label>
+                    <input type="file" id="folderInput" accept="image/png,image/jpeg" multiple webkitdirectory>
+                    <label for="folderInput" class="file-label folder-btn">フォルダを選択</label>
+                </div>
             </div>
 
             <div class="actions">
