@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VRChat Image Info Analyzer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>VRChat Image Info Analyzer</h1>
+        <p>画像ファイルのメタデータをブラウザ内で解析・表示します</p>
+    </header>
+
+    <main>
+        <section id="controls">
+            <div class="drop-zone" id="dropZone">
+                <p>ここに画像をドラッグ＆ドロップ</p>
+                <p class="hint">または</p>
+                <input type="file" id="fileInput" accept="image/png,image/jpeg" multiple>
+                <label for="fileInput" class="file-label">ファイルを選択</label>
+            </div>
+
+            <div class="actions">
+                <button id="downloadJson" disabled>JSON ダウンロード</button>
+                <button id="copyJson" disabled>クリップボードにコピー</button>
+            </div>
+        </section>
+
+        <section id="status">
+            <div class="stat-card">
+                <span class="stat-value" id="statLoaded">0</span>
+                <span class="stat-label">読み込み数</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" id="statXmp">0</span>
+                <span class="stat-label">XMP検出数</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" id="statVrc">0</span>
+                <span class="stat-label">VRChatデータ</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" id="statOther">0</span>
+                <span class="stat-label">その他メタデータ</span>
+            </div>
+        </section>
+
+        <section id="results"></section>
+    </main>
+
+    <footer>
+        <p>完全オフライン動作 ・ 外部通信なし ・ ローカル処理のみ</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
