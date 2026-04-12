@@ -11,6 +11,7 @@
     const statOther = document.getElementById("statOther");
 
     const parsedData = [];
+    const fileRefs = []; // store File objects for preview
 
     // ── Drag & Drop ──
     dropZone.addEventListener("dragover", e => {
@@ -53,6 +54,10 @@
         const buffer = await file.arrayBuffer();
         const array = new Uint8Array(buffer);
 
+        // Store file reference for preview
+        const fileIndex = fileRefs.length;
+        fileRefs.push(file);
+
         // Basic info
         const info = {
             fileName: file.name,
@@ -90,7 +95,7 @@
 
         parsedData.push(info);
         updateStats();
-        renderCard(info);
+        renderCard(info, fileIndex);
         enableButtons();
     }
 
@@ -121,16 +126,16 @@
             const type = readChunkType(array, offset + 4);
             const dataStart = offset + 8;
 
-            if (type === "iTXt" || type === "tEXt") {
+            if (type === "tEXt") {
                 const text = decodeTextChunk(array, dataStart, length, type);
                 info.pngText.push(text);
-                info.hasPngText = true;
-            } else if (type === "zTXt") {
-                info.pngText.push({ type: "zTXt", note: "compressed (detected only)" });
                 info.hasPngText = true;
             } else if (type === "iTXt") {
                 const text = decodeITxtChunk(array, dataStart, length);
                 info.pngText.push(text);
+                info.hasPngText = true;
+            } else if (type === "zTXt") {
+                info.pngText.push({ type: "zTXt", keyword: "(zTXt)", value: "compressed (detected only)" });
                 info.hasPngText = true;
             } else if (type === "XMP") {
                 info.xmp = decodeXmpChunk(array, dataStart, length);
@@ -152,7 +157,7 @@
 
     function decodeTextChunk(arr, start, length, type) {
         const sepIndex = arr.indexOf(0, start);
-        if (sepIndex === -1) return { type, keyword: "(parse error)", value: "" };
+        if (sepIndex === -1 || sepIndex >= start + length) return { type, keyword: "(parse error)", value: "" };
         const keyword = new TextDecoder().decode(arr.slice(start, sepIndex));
         const value = new TextDecoder().decode(arr.slice(sepIndex + 1, start + length));
         return { type, keyword, value };
@@ -160,15 +165,14 @@
 
     function decodeITxtChunk(arr, start, length) {
         const sep1 = arr.indexOf(0, start);
-        if (sep1 === -1) return { type: "iTXt", keyword: "(parse error)", value: "" };
+        if (sep1 === -1 || sep1 >= start + length) return { type: "iTXt", keyword: "(parse error)", value: "" };
         const keyword = new TextDecoder().decode(arr.slice(start, sep1));
-        // skip compression flag + method + language + translated keyword
         let pos = sep1 + 1;
         const sep2 = arr.indexOf(0, pos);
-        if (sep2 === -1) return { type: "iTXt", keyword, value: "(parse error)" };
+        if (sep2 === -1 || sep2 >= start + length) return { type: "iTXt", keyword, value: "(parse error)" };
         pos = sep2 + 1;
         const sep3 = arr.indexOf(0, pos);
-        if (sep3 === -1) return { type: "iTXt", keyword, value: "(parse error)" };
+        if (sep3 === -1 || sep3 >= start + length) return { type: "iTXt", keyword, value: "(parse error)" };
         pos = sep3 + 1;
         const value = new TextDecoder().decode(arr.slice(pos, start + length));
         return { type: "iTXt", keyword, value };
@@ -187,17 +191,21 @@
             if (marker === 0xD8 || marker === 0xD9) { offset += 2; continue; } // SOI / EOI
             if (marker < 0xD0 || marker > 0xD7) {
                 const segLength = readUint16(array, offset + 2);
-                if (marker === 0xE1) { // APP1
-                    const id = String.fromCharCode(array[offset + 4], array[offset + 5], array[offset + 6], array[offset + 7], array[offset + 8], array[offset + 9]);
+                if (marker === 0xE1 && segLength > 8) { // APP1
+                    const id = String.fromCharCode(...array.slice(offset + 4, offset + 10));
                     if (id === "Exif\x00\x00") {
                         parseExif(array, offset + 10, segLength - 8, info);
-                    } else if (id === "http:/") {
-                        // possible XMP in APP1
-                        const xmpData = array.slice(offset + 4, offset + 2 + segLength);
-                        const str = new TextDecoder().decode(xmpData);
-                        if (str.includes("<x:xmpmeta")) {
-                            info.xmp = str;
-                            info.hasXmp = true;
+                    } else {
+                        // XMP can also be in APP1 with "http://ns.adobe.com/xap/1.0/\x00"
+                        const ns = "http://ns.adobe.com/xap/1.0/\x00";
+                        const header = array.slice(offset + 4, offset + 4 + ns.length);
+                        if (new TextDecoder().decode(header).startsWith("http://ns.adobe.com/xap/1.0/")) {
+                            const xmpData = array.slice(offset + 4 + ns.length, offset + 2 + segLength);
+                            const str = new TextDecoder().decode(xmpData);
+                            if (str.includes("<x:xmpmeta")) {
+                                info.xmp = str;
+                                info.hasXmp = true;
+                            }
                         }
                     }
                 }
@@ -213,10 +221,12 @@
     }
 
     function parseExif(array, start, length, info) {
+        if (length < 8) return;
         const tiffStart = start;
         const endian = String.fromCharCode(array[tiffStart], array[tiffStart + 1]);
         const isBigEndian = endian === "MM";
         const ifdOffset = readUint32Exif(array, tiffStart + 4, isBigEndian);
+        if (ifdOffset >= length) return;
         const ifdStart = tiffStart + ifdOffset;
         const numEntries = readUint16Exif(array, ifdStart, isBigEndian);
 
@@ -231,11 +241,12 @@
 
         for (let i = 0; i < numEntries; i++) {
             const entryOffset = ifdStart + 2 + i * 12;
+            if (entryOffset + 12 > start + length) break;
             const tag = readUint16Exif(array, entryOffset, isBigEndian);
             const tagName = exifTags[tag];
             if (!tagName) continue;
 
-            const value = readExifValue(array, entryOffset + 8, isBigEndian, tiffStart);
+            const value = readExifValue(array, entryOffset + 8, isBigEndian, tiffStart, length);
             if (value !== undefined) {
                 info.exif.push({ tag: tagName, value });
                 info.hasExif = true;
@@ -253,21 +264,27 @@
             : (arr[off + 3] << 24 | arr[off + 2] << 16 | arr[off + 1] << 8 | arr[off]) >>> 0;
     }
 
-    function readExifValue(arr, entryOffset, be, tiffStart) {
+    function readExifValue(arr, entryOffset, be, tiffStart, maxLen) {
         const type = readUint16Exif(arr, entryOffset, be);
         const count = readUint32Exif(arr, entryOffset + 2, be);
 
-        if (type === 2 && count <= 4) {
-            return String.fromCharCode(...arr.slice(entryOffset + 4, entryOffset + 4 + count - 1));
-        }
-        if (type === 2) {
-            const strOffset = readUint32Exif(arr, entryOffset + 4, be);
-            const strStart = tiffStart + strOffset;
+        if (type === 2) { // ASCII string
+            let strStart, strEnd;
+            if (count <= 4) {
+                strStart = entryOffset + 4;
+                strEnd = strStart + count - 1;
+            } else {
+                const strOffset = readUint32Exif(arr, entryOffset + 4, be);
+                strStart = tiffStart + strOffset;
+                strEnd = strStart + count - 1;
+            }
+            if (strEnd > tiffStart + maxLen) strEnd = tiffStart + maxLen;
             let end = strStart;
-            while (arr[end] !== 0 && end - strStart < count) end++;
-            return String.fromCharCode(...arr.slice(strStart, end));
+            while (end < strEnd && arr[end] !== 0) end++;
+            if (end === strStart) return undefined;
+            return new TextDecoder().decode(arr.slice(strStart, end));
         }
-        if (type === 3 && count === 1) {
+        if (type === 3 && count === 1) { // SHORT
             return readUint16Exif(arr, entryOffset + 4, be);
         }
         return undefined;
@@ -278,7 +295,8 @@
         const targets = [
             "vrc:WorldID", "vrc:WorldDisplayName",
             "vrc:AuthorID", "vrc:AuthorDisplayName",
-            "xmp:CreateDate", "xmp:ModifyDate", "xmp:MetadataDate", "xmp:CreatorTool"
+            "xmp:CreatorTool", "xmp:Author",
+            "xmp:CreateDate", "xmp:ModifyDate", "xmp:MetadataDate"
         ];
         for (const key of targets) {
             const regex = new RegExp(`<${key}>([^<]*)</${key}>`, "i");
@@ -290,10 +308,12 @@
     // ── Parse XMP to key/value ──
     function parseXmpToKv(xmpStr) {
         const kv = [];
-        const regex = /<([\w:]+)>([^<]*)<\/\1>/g;
+        // Match opening and closing tags with content (non-greedy, handles attributes)
+        const regex = /<([\w:]+)(?:\s[^>]*)?>([\s\S]*?)<\/\1>/g;
         let m;
         while ((m = regex.exec(xmpStr)) !== null) {
-            kv.push({ key: m[1], value: m[2] });
+            const val = m[2].trim();
+            if (val) kv.push({ key: m[1], value: val });
         }
         return kv;
     }
@@ -312,17 +332,12 @@
     }
 
     // ── Render Card ──
-    function renderCard(info) {
+    function renderCard(info, fileIndex) {
         const card = document.createElement("div");
         card.className = "card";
 
-        const previewUrl = URL.createObjectURL(new Blob([new Uint8Array([])]));
-        // We need the actual blob URL for preview
-        let blobUrl = "";
-        // Re-read file from parsedData index
-        const idx = parsedData.indexOf(info);
-        const fileRef = getCurrentFile(idx);
-        if (fileRef) blobUrl = URL.createObjectURL(fileRef);
+        const file = fileRefs[fileIndex];
+        const blobUrl = file ? URL.createObjectURL(file) : "";
 
         card.innerHTML = `
             <div class="card-preview">
@@ -331,7 +346,7 @@
             <div class="card-body">
                 <div class="card-title">${escHtml(info.fileName)}</div>
                 <div class="card-meta">
-                    <span>${(info.fileSize / 1024).toFixed(1)} KB</span>
+                    <span>${formatSize(info.fileSize)}</span>
                     <span>${info.width} × ${info.height}</span>
                 </div>
                 <div class="badges">
@@ -358,18 +373,11 @@
         });
     }
 
-    function getCurrentFile(index) {
-        // Access the last used FileList via closure – we'll store it
-        return lastFiles ? lastFiles[index] : null;
+    function formatSize(bytes) {
+        if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + " MB";
+        if (bytes >= 1024) return (bytes / 1024).toFixed(1) + " KB";
+        return bytes + " B";
     }
-
-    let lastFiles = null;
-    const origHandleFiles = handleFiles;
-    // Override to capture file list reference
-    handleFiles = function(fileList) {
-        lastFiles = fileList;
-        origHandleFiles(fileList);
-    };
 
     function renderVrcSection(vrc) {
         const items = Object.entries(vrc).map(([k, v]) =>
