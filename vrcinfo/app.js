@@ -121,16 +121,25 @@
             const type = readChunkType(array, offset + 4);
             const dataStart = offset + 8;
 
-            if (type === "iTXt" || type === "tEXt") {
+            if (type === "tEXt") {
                 const text = decodeTextChunk(array, dataStart, length, type);
                 info.pngText.push(text);
                 info.hasPngText = true;
-            } else if (type === "zTXt") {
-                info.pngText.push({ type: "zTXt", note: "compressed (detected only)" });
-                info.hasPngText = true;
+                // VRChat saves XMP in tEXt chunk with keyword "XML:com.adobe.xmp"
+                if (text.keyword === "XML:com.adobe.xmp" && text.value.includes("<x:xmpmeta")) {
+                    info.xmp = text.value;
+                    info.hasXmp = true;
+                }
             } else if (type === "iTXt") {
                 const text = decodeITxtChunk(array, dataStart, length);
                 info.pngText.push(text);
+                info.hasPngText = true;
+                if (text.keyword === "XML:com.adobe.xmp" && text.value.includes("<x:xmpmeta")) {
+                    info.xmp = text.value;
+                    info.hasXmp = true;
+                }
+            } else if (type === "zTXt") {
+                info.pngText.push({ type: "zTXt", note: "compressed (detected only)" });
                 info.hasPngText = true;
             } else if (type === "XMP") {
                 info.xmp = decodeXmpChunk(array, dataStart, length);
