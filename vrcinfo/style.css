@@ -187,6 +187,11 @@ main {
     margin-right: 0.8rem;
 }
 
+.card-meta .update-date {
+    color: #1a73e8;
+    font-weight: 600;
+}
+
 .badges {
     display: flex;
     flex-wrap: wrap;

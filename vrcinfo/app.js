@@ -349,6 +349,7 @@
                 <div class="card-meta">
                     <span>${(info.fileSize / 1024).toFixed(1)} KB</span>
                     <span>${info.width} × ${info.height}</span>
+                    ${info.vrc["xmp:ModifyDate"] ? `<span class="update-date">更新: ${formatDate(info.vrc["xmp:ModifyDate"])}</span>` : ""}
                 </div>
                 <div class="badges">
                     <span class="badge ${info.hasXmp ? 'active' : ''}">XMP</span>
@@ -440,6 +441,13 @@
             `<tr><td>${escHtml(item.keyword || item.type)}</td><td>${escHtml(item.value || item.note || "")}</td></tr>`
         ).join("");
         return `<div class="section"><div class="section-title">PNG text</div><div class="section-content"><table>${rows}</table></div></div>`;
+    }
+
+    function formatDate(isoStr) {
+        const d = new Date(isoStr);
+        if (isNaN(d)) return isoStr;
+        const pad = n => String(n).padStart(2, "0");
+        return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
     function escHtml(str) {
