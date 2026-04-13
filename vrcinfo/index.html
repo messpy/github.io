@@ -51,8 +51,12 @@
 
     <footer>
         <p>完全オフライン動作 ・ 外部通信なし ・ ローカル処理のみ</p>
+        <p class="update-time">最終更新: <span id="updateTime"></span></p>
     </footer>
 
+    <script>
+        document.getElementById("updateTime").textContent = new Date().toLocaleString("ja-JP");
+    </script>
     <script src="app.js"></script>
 </body>
 </html>
