@@ -290,10 +290,17 @@
     // ── Parse XMP to key/value ──
     function parseXmpToKv(xmpStr) {
         const kv = [];
-        const regex = /<([\w:]+)>([^<]*)<\/\1>/g;
+        // Match tags with optional attributes, capturing content (may contain newlines)
+        const regex = /<([\w:]+)(?:\s[^>]*)?>([\s\S]*?)<\/\1>/g;
         let m;
         while ((m = regex.exec(xmpStr)) !== null) {
-            kv.push({ key: m[1], value: m[2] });
+            let key = m[1];
+            const val = m[2].trim();
+            // Remove namespace prefix (e.g., "xmp:CreatorTool" → "CreatorTool")
+            if (key.includes(':')) {
+                key = key.split(':').pop();
+            }
+            if (val) kv.push({ key, value: val });
         }
         return kv;
     }
