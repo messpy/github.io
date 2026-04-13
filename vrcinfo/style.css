@@ -311,6 +311,17 @@ table td:first-child {
     word-break: break-all;
 }
 
+.id-value-output {
+    background: #e8f5e9;
+    padding: 0.6rem;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.8rem;
+    white-space: pre-wrap;
+    line-height: 1.8;
+    border-left: 3px solid #4caf50;
+}
+
 footer {
     text-align: center;
     padding: 1.5rem;

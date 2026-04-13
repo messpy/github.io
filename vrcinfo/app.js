@@ -400,12 +400,24 @@
         const rows = kv.map(({ key, value }) =>
             `<tr><td>${escHtml(key)}</td><td>${escHtml(value)}</td></tr>`
         ).join("");
+        
+        // [id] 値 形式の出力
+        const idValueLines = kv.map(({ key, value }) =>
+            `[${escHtml(key)}] ${escHtml(value)}`
+        ).join("\n");
+        
         const raw = escHtml(xmpStr);
         return `
             <div class="section">
                 <div class="section-title">XMP 一覧</div>
                 <div class="section-content">
                     <table>${rows}</table>
+                </div>
+            </div>
+            <div class="section">
+                <div class="section-title">[id] 値 形式</div>
+                <div class="section-content">
+                    <div class="id-value-output">${escHtml(idValueLines)}</div>
                 </div>
             </div>
             <div class="section">
