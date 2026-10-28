@@ -26,22 +26,22 @@ export default {
 
     if (request.method === "GET") {
       const result = await env.DB.prepare(
-        "SELECT id,name,planet,color,personality,talent,texture,size,rings,seed,born FROM visitors ORDER BY updated_at DESC LIMIT 200"
+        "SELECT id,name,planet,color,personality,talent,texture,hobby,favorite,size,rings,seed,born FROM visitors ORDER BY updated_at DESC LIMIT 200"
       ).all();
       return json({ stars: result.results || [] }, 200, request);
     }
     if (request.method !== "POST") return json({ error: "method not allowed" }, 405, request);
 
     const body = await request.json();
-    const required = ["id", "name", "planet", "color", "personality", "talent", "texture", "size", "seed", "born"];
+    const required = ["id", "name", "planet", "color", "personality", "talent", "texture", "hobby", "favorite", "size", "seed", "born"];
     if (required.some((key) => typeof body[key] === "undefined")) return json({ error: "invalid visitor" }, 400, request);
     const visitor = { ...body, rings: body.rings ? 1 : 0, updated_at: new Date().toISOString() };
-    await env.DB.prepare(`INSERT INTO visitors (id,name,planet,color,personality,talent,texture,size,rings,seed,born,updated_at)
-      VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)
-      ON CONFLICT(id) DO UPDATE SET name=?2,planet=?3,color=?4,personality=?5,talent=?6,texture=?7,size=?8,rings=?9,seed=?10,born=?11,updated_at=?12`)
-      .bind(visitor.id, visitor.name, visitor.planet, visitor.color, visitor.personality, visitor.talent, visitor.texture, visitor.size, visitor.rings, visitor.seed, visitor.born, visitor.updated_at)
+    await env.DB.prepare(`INSERT INTO visitors (id,name,planet,color,personality,talent,texture,hobby,favorite,size,rings,seed,born,updated_at)
+      VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)
+      ON CONFLICT(id) DO UPDATE SET name=?2,planet=?3,color=?4,personality=?5,talent=?6,texture=?7,hobby=?8,favorite=?9,size=?10,rings=?11,seed=?12,born=?13,updated_at=?14`)
+      .bind(visitor.id, visitor.name, visitor.planet, visitor.color, visitor.personality, visitor.talent, visitor.texture, visitor.hobby, visitor.favorite, visitor.size, visitor.rings, visitor.seed, visitor.born, visitor.updated_at)
       .run();
-    const result = await env.DB.prepare("SELECT id,name,planet,color,personality,talent,texture,size,rings,seed,born FROM visitors ORDER BY updated_at DESC LIMIT 200").all();
+    const result = await env.DB.prepare("SELECT id,name,planet,color,personality,talent,texture,hobby,favorite,size,rings,seed,born FROM visitors ORDER BY updated_at DESC LIMIT 200").all();
     return json({ me: visitor, stars: result.results || [] }, 200, request);
   },
 };

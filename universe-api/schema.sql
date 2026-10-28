@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS visitors (
   personality TEXT NOT NULL,
   talent TEXT NOT NULL,
   texture TEXT NOT NULL,
+  hobby TEXT NOT NULL,
+  favorite TEXT NOT NULL,
   size INTEGER NOT NULL,
   rings INTEGER NOT NULL DEFAULT 0,
   seed INTEGER NOT NULL,
