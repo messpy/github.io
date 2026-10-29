@@ -1,21 +1,25 @@
-# VRChat Tools
+# Kenny's Universe
 
-VRChat関連のWebツールをGitHub Pagesで公開しています。
-完全クライアントサイド動作（外部通信なし）。
+GitHub Pagesで公開している、星とプロフィールの小さな宇宙です。
 
-## 🖼️ [VRC Info Analyzer](https://messpy.github.io/vrcinfo/)
+## [KENNY'S UNIVERSE](https://messpy.github.io/github.io/)
 
-VRChat画像のメタデータ（XMP / EXIF / PNG text）をブラウザ上で解析・表示します。
+- 初回訪問時に、ひらがな2〜10文字の名前をランダム生成
+- 趣味・最近推しているもの・性格などをランダム生成
+- プロフィールはブラウザの`localStorage`に保存
+- 現在の月齢に合わせた月を表示
+- 星は経過した月数に応じて少しずつ成長
+- 星をクリックすると住人の情報を表示
+- 外部サーバーやCloudflareは使用せず、ブラウザだけで動作
 
-- ドラッグ＆ドロップ対応
-- XMPからのVRChatメタデータ抽出（WorldID, AuthorID等）
-- EXIF / PNG text チャンク解析
-- JSON エクスポート対応
+訪問者情報はサーバーに送信されないため、別の端末や別の訪問者との星の共有は行いません。
 
-## 🥚 [ろらごっち](https://messpy.github.io/roragotchi/)
+## その他のページ
 
-ローカル保存のたまごっち風ミニゲーム。
+### [VRC Info Analyzer](https://messpy.github.io/vrcinfo/)
 
-- 卵→あたため→孵化→成長
-- えさ・あそぶ・そうじで世話
-- localStorageで状態保存
+VRChat画像のXMP / EXIF / PNG textメタデータをブラウザ上で解析します。
+
+### [ろらごっち](https://messpy.github.io/roragotchi/)
+
+localStorageに保存する、たまごっち風のミニゲームです。
