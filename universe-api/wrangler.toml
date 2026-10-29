@@ -1,8 +1,0 @@
-name = "kenny-universe-api"
-main = "src/worker.js"
-compatibility_date = "2026-10-29"
-
-[[d1_databases]]
-binding = "DB"
-database_name = "kenny-universe"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
